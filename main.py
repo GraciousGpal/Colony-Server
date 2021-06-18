@@ -53,7 +53,7 @@ async def call_handlers(self, rooms, command, xml, user, cntr):
 
 
 async def ensure_disconnect(self, user):
-    # Ensure Disconnection
+# Ensure Disconnection
     for room_id in rms:
         room = rms[room_id]
         if user.id in room.users:
@@ -61,6 +61,10 @@ async def ensure_disconnect(self, user):
                 f"<msg t='sys'><body action='userGone' r='{user.room}'><user id='{user.id}' /></body></msg>")
             async with self.lock:
                 await room.remove_user(user.id)
+                if room.remove_room:
+                    if rms.pop(int(room.id), None) is None:
+                        log.error(f"{room.id} not Found!")
+
     log.info(f"Connection lost to {user.address}")
 
 
@@ -83,7 +87,10 @@ class Server:
                 if message is None:
                     break
                 messages = message.split('\00')
-                messages.remove('')
+                try:
+                    messages.remove('')
+                except ValueError:
+                    pass
                 for msg in messages:
                     xml = parse_xml(msg)
                     command, room = get_commands(xml)

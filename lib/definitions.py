@@ -12,10 +12,14 @@ class User:
         self.mod = 0
         self.name = ""
         self.password = ""
+        self.race = 0
         self.rank = 1
         self.gamesPlayed = 0
         self.gamesWon = 0
         self.gamesConsecutiveWins = 0
+        self.team = 0
+        self.color = 0
+        self.pts = 0
         self.reader = reader
         self.writer = writer
         self.address = writer.get_extra_info('peername')
@@ -59,6 +63,7 @@ class Room:
         self.users = {}
         self.usr_pos = [None, None, None, None]
         self.user_pos_id = [0, 0, 0, 0]
+        self.remove_room = False
 
     async def add_user(self, user: User):
         user.room = self.id
@@ -69,6 +74,7 @@ class Room:
         user = self.users.pop(user_id)
         if user is not None:
             self.ucnt -= 1
+            self.is_room_empy()
         else:
             raise UserNotFoundInRoom
 
@@ -84,5 +90,10 @@ class Room:
             user.room = dst
             rms[dst].users[user.id] = user
             rms[dst].ucnt += 1
+            self.is_room_empy()
         else:
             raise UserNotFoundInRoom
+
+    def is_room_empy(self):
+        if len(self.users) == 0 and self.id != 1 and self.id != 42:
+            self.remove_room = True

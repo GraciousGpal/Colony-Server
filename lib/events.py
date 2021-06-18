@@ -1,4 +1,5 @@
 from logging import getLogger
+from xml.etree import ElementTree as et
 
 from lxml import objectify
 
@@ -68,6 +69,10 @@ async def join_room(self, rms, xml, user, counter, room_join_id=None):
             else:
                 await rms[user.room].move_user(rms, user.id, int(xml.body.room.attrib['id']), user)
 
+            if rms[user.room].remove_room:
+                if rms.pop(int(rms[user.room].id), None) is None:
+                    log.error(f"Remove Room Failed: {rms[user.room].id} not Found!")
+
     for u in selected_room.users:
         us = selected_room.users[u]
         msg += f"<u i='{us.id}' m='{us.mod}'><n><![CDATA[{us.name}]]></n><vars></vars></u>"
@@ -79,28 +84,24 @@ async def join_room(self, rms, xml, user, counter, room_join_id=None):
                 f"<msg t='sys'><body action='uCount' r='{selected_room.id}' u='{selected_room.ucnt}'></body></msg>")
             if selected_room.users[u].id != user.id:
                 await selected_room.users[u].send(
-                    f"<msg t='sys'><body action='uER' r='{selected_room.id}'><u i ='{user.id}' m='0'><n><![CDATA[{user.name}]]></n><vars></vars></u></body></msg>")
+                    f"<msg t='sys'><body action='uER' r='{selected_room.id}'><u i ='{user.id}' m='{user.mod}' s='0'"
+                    f" p='2'><n><![CDATA[{user.name}]]></n><vars><var n='rank' t='n'><![CDATA[{user.rank}]]></var>"
+                    f"<var n='gamesPlayed' t='n'><![CDATA[{user.gamesPlayed}]]></var></vars></u></body></msg>")
 
 
 # <msg t='sys'><body action='setUvars' r='1'><vars><var n='rank' t='n'><![CDATA[1]]></var><var n='gamesPlayed' t='n'><![CDATA[4]]></var></vars></body></msg>
 async def set_usr_variables(self, rms, xml, user, _):
     user = rms[user.room].users[user.id]
     room = rms[user.room].users
+    vars = {'userName': user.name, 'race': user.race, 'team': user.team, 'color': user.color, 'pts': user.pts,
+            'gamesConsecutiveWins': user.gamesConsecutiveWins, 'gamesWon': user.gamesWon,
+            'gamesPlayed': user.gamesPlayed, 'rank': user.rank}
     for var in xml.body.vars.var:
-        if var.attrib['n'] == "rank":
+        if var.attrib['n'] in vars:
             async with self.lock:
-                user.rank = var.text
-        elif var.attrib['n'] == 'gamesPlayed':
-            async with self.lock:
-                user.rank = var.text
-        elif var.attrib['n'] == 'gamesWon':
-            async with self.lock:
-                user.gamesWon = var.text
-        elif var.attrib['n'] == 'gamesConsecutiveWins':
-            async with self.lock:
-                user.gamesConsecutiveWins = var.text
+                vars[var.attrib['n']] = var.text
         else:
-            raise Exception(f"Found a new var case.({var})")
+            raise Exception(f"Found a new var case.({var.attrib['n']})")
 
     for usr_id in room:
         for room_ in rms:
@@ -185,7 +186,7 @@ async def kill_unit(self, rms, xml, user, rm_vars, dict_format_obj):
     msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}'/><dataObj><![CDATA[<dataObj><var n='id' t='s'>killUnit</var><obj o='sub' t='a'>"
     for item in data:
         msg += f"<var n='{item}' t='{data[item][1]}'>{data[item][0]}</var>"
-    msg = f"{msg}]]></dataObj></body></msg>"
+    msg = f"{msg}</obj></dataObj>]]></dataObj></body></msg>"
     for usr in rms[int(rm_vars['rm_id'])].users:
         await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
@@ -200,11 +201,32 @@ async def asObjG_(self, rms, xml, user, counter):
     if rm_vars['id'] == 'updateTeamDisplay':
         await updateTeamDisplay(self, rms, xml, rm_vars, dict_format_obj)
 
-    if rm_vars['id'] == 'beginGame':
+    elif rm_vars['id'] == 'beginGame':
         await beginGame(self, rms, xml, user, rm_vars, dict_format_obj, counter)
 
-    if rm_vars['id'] == 'killUnit':
+    elif rm_vars['id'] == 'killUnit':
         await kill_unit(self, rms, xml, user, rm_vars, dict_format_obj)
+
+    elif rm_vars['id'] == 'orderUnit':
+        await orderUnit(self, rms, xml, user, rm_vars, dict_format_obj)
+    else:
+        raise Exception(f"{rm_vars['id']} New Code Found.")
+
+
+async def orderUnit(self, rms, xml, user, rm_vars, dict_format_obj):
+    unt_cmd = dict_format_obj.obj.var.text
+    arrays = get_array_objects(dict_format_obj, xml.body.text)
+    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' />" \
+          f"<dataObj><![CDATA[<dataObj>" \
+          f"<var n='id' t='s'>orderUnit</var><obj o='sub' t='a'>" \
+          f"<var n='id' t='n'>{unt_cmd}</var><obj o='orderArray' t='a'>"
+
+    for x in dict_format_obj.obj.obj.var:
+        msg += f"<var n='{x.attrib['n']}' t='{x.attrib['t']}'>{x.text}</var>"
+    msg += f"</obj></obj></dataObj>]]></dataObj></body></msg>"
+
+    for usr in rms[int(rm_vars['rm_id'])].users:
+        await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
 
 async def updateTeamDisplay(self, rms, xml, rm_vars, dict_obj):
@@ -240,7 +262,7 @@ async def xtReq_(self, rms, xml, user, counter):
     dict_format_obj = objectify.fromstring(xml.body.text)
     rm_vars = get_room_vars(dict_format_obj)
     rm_vars['rm_id'] = room_id
-
+    tree = et.ElementTree(et.fromstring(xml.body.text))
     if "cmd" in rm_vars:
         data_to_send = {}
         da = [5, 0, 0, 0, 0, 0, 0, 0]
@@ -255,14 +277,16 @@ async def xtReq_(self, rms, xml, user, counter):
                 data_to_send[var.attrib['n']] = var.text
 
             da[1] = room_id
-            da[2] = data_to_send['option']  # TODO Implement Cancel Function
+            da[2] = ""
+            if 'option' in data_to_send:
+                da[2] = data_to_send['option']
             da[3] = data_to_send['pos']
             da[4] = data_to_send['cmd']
 
             # Used by Buildings
             if data_to_send['cmd'] == "0":
                 building_vars = {}
-                for var in dict_format_obj.obj.obj.var:
+                for var in tree.findall('obj/obj/var'):
                     building_vars[var.attrib['n']] = var.text
                 da[5] = building_vars['building']
                 da[6] = int(building_vars['cancelOrder'])
