@@ -266,7 +266,8 @@ async def beginGame(self, rms, xml, user, rm_vars, dict_obj, counter):
     for usr in rms[int(rm_vars['rm_id'])].users:
         await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
-    user_names = [(user.name, user.id) for user in rms[int(rm_vars['rm_id'])].users]
+    user_names = [(rms[int(rm_vars['rm_id'])].users[user].name, rms[int(rm_vars['rm_id'])].users[user].id) for user in
+                  rms[int(rm_vars['rm_id'])].users]
     log.info(f"A game has started in room {rms[int(rm_vars['rm_id'])].name}({rm_vars['rm_id']}) with [{user_names}]")
 
 
