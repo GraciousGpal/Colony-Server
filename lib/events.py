@@ -315,9 +315,15 @@ async def xtReq_(self, rms, xml, user, counter):
                     unit_vars['random'].append(var.text)
 
                 da[5] = unit_vars['setId']
+                da_m = da[:6]
                 for idx, item in enumerate(unit_vars['random']):
-                    idx = idx + 6
-                    da[idx] = item
+                    if len(unit_vars['random']) > 2:
+                        da_m.append(item)
+                    else:
+                        idx = idx + 6
+                        da[idx] = item
+                if len(unit_vars['random']) > 2:
+                    da = da_m
 
             # Used by Missiles
             elif data_to_send['cmd'] == "2":
