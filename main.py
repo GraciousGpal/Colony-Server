@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import start_server, run
+from asyncio.exceptions import IncompleteReadError
 
 from lxml import objectify
 
@@ -20,7 +21,7 @@ rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
 
 
 async def listen_for_messages(user: User):
-    data = await user.reader.read(int(config['connection']['buffer']))
+    data = await user.reader.readuntil(b'\x00')
     try:
         message = data.decode('ascii')
     except UnicodeDecodeError:
@@ -56,10 +57,13 @@ async def ensure_disconnect(self, user):
     for room_id in rms:
         room = rms[room_id]
         if user.id in room.users:
-            await user.send(
-                f"<msg t='sys'><body action='userGone' r='{user.room}'><user id='{user.id}' /></body></msg>")
             async with self.lock:
                 await room.remove_user(user.id)
+            for usr in room.users:
+                await room.users[usr].send(
+                    f"<msg t='sys'><body action='userGone' r='{user.room}'><user id='{user.id}' /></body></msg>")
+                await room.users[usr].send(
+                    f"<msg t='sys'><body action='uCount' r='{user.room}' u='{len(room.users)}'></body></msg>")
     log.info(f"Connection lost to {user.address}")
 
 
@@ -76,7 +80,10 @@ class Server:
         log.info(f'User {user.address} connected!')
         try:
             while True:
-                message = await listen_for_messages(user)
+                try:
+                    message = await listen_for_messages(user)
+                except IncompleteReadError:
+                    break
                 if message is None:
                     break
                 messages = message.split('\00')
@@ -86,6 +93,8 @@ class Server:
                     pass
                 for msg in messages:
                     xml = parse_xml(msg)
+                    if xml is None:
+                        continue
                     command, room = get_commands(xml)
                     try:
                         await call_handlers(self, rms, command, xml, user, counter)
