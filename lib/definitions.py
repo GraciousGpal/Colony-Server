@@ -6,9 +6,9 @@ log = getLogger(__name__)
 
 
 class User:
-    def __init__(self, reader, writer, id):
+    def __init__(self, reader, writer, id_):
         self.room = -1
-        self.id = id
+        self.id = id_
         self.mod = 0
         self.name = ""
         self.password = ""
@@ -24,7 +24,8 @@ class User:
         self.writer = writer
         self.address = writer.get_extra_info('peername')
 
-    def clean(self, a):
+    @staticmethod
+    def clean(a):
         """
         Formats the message properly to the client format
         this function must be used before sending or client wont recognise
@@ -49,8 +50,8 @@ class User:
 
 
 class Room:
-    def __init__(self, name, id):
-        self.id = id
+    def __init__(self, name, id_):
+        self.id = id_
         self.priv = 0
         self.temp = 0
         self.game = 0
@@ -97,3 +98,6 @@ class Room:
     def is_room_empy(self):
         if len(self.users) == 0 and self.id != 1 and self.id != 42:
             self.remove_room = True
+            return True
+        else:
+            return False

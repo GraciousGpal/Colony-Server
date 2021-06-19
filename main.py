@@ -20,7 +20,7 @@ rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
 
 
 async def listen_for_messages(user: User):
-    data = await user.reader.read(1024)
+    data = await user.reader.read(int(config['connection']['buffer']))
     try:
         message = data.decode('ascii')
     except UnicodeDecodeError:
@@ -40,8 +40,8 @@ def parse_xml(message: str):
     try:
         xml = objectify.fromstring(message)
     except Exception as e:
-        log.error(f'Parse Error Occurred! ({e})')
-        raise e  # TODO Add support for in game packet arrays
+        log.error(f'Parse Error Occurred! ({e}) (message)')
+        raise e
     return xml
 
 
@@ -53,7 +53,7 @@ async def call_handlers(self, rooms, command, xml, user, cntr):
 
 
 async def ensure_disconnect(self, user):
-# Ensure Disconnection
+    # Ensure Disconnection
     for room_id in rms:
         room = rms[room_id]
         if user.id in room.users:
@@ -61,10 +61,6 @@ async def ensure_disconnect(self, user):
                 f"<msg t='sys'><body action='userGone' r='{user.room}'><user id='{user.id}' /></body></msg>")
             async with self.lock:
                 await room.remove_user(user.id)
-                if room.remove_room:
-                    if rms.pop(int(room.id), None) is None:
-                        log.error(f"{room.id} not Found!")
-
     log.info(f"Connection lost to {user.address}")
 
 
@@ -75,10 +71,8 @@ class Server:
 
     async def handle(self, reader, writer):
         global counter
-        log.info(f"Before {counter}")
         async with self.lock:
             counter += 1
-            log.info(f"After {counter}")
         user = User(reader, writer, counter)
         log.info(f'User {user.address} connected!')
         try:
