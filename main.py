@@ -39,10 +39,9 @@ def get_commands(xml: objectify.ObjectifiedElement):
 def parse_xml(message: str):
     try:
         xml = objectify.fromstring(message)
+        return xml
     except Exception as e:
         log.error(f'Parse Error Occurred! ({e}) (message)')
-        raise e
-    return xml
 
 
 async def call_handlers(self, rooms, command, xml, user, cntr):
