@@ -78,7 +78,7 @@ class Server:
             while True:
                 message = await listen_for_messages(user)
                 if message is None:
-                    break
+                    continue
                 messages = message.split('\00')
                 try:
                     messages.remove('')
