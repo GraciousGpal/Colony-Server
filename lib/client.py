@@ -1,5 +1,4 @@
-import asyncio
-from asyncio import start_server, run
+from asyncio import start_server, run, Lock
 from asyncio.exceptions import IncompleteReadError
 
 from lxml import objectify
@@ -21,6 +20,11 @@ rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
 
 
 async def listen_for_messages(user: User):
+    """
+    Reads Data from user stream until null terminator is found.
+    :param user:
+    :return:
+    """
     data = await user.reader.readuntil(b'\x00')
     try:
         message = data.decode('ascii')
@@ -34,10 +38,20 @@ async def listen_for_messages(user: User):
 
 
 def get_commands(xml: objectify.ObjectifiedElement):
+    """
+    Returns an action and the room from the xml string.
+    :param xml:
+    :return:
+    """
     return xml.body.attrib['action'], xml.body.attrib['r']
 
 
 def parse_xml(message: str):
+    """
+    Convert xml to a dictionary like object from string.
+    :param message:
+    :return:
+    """
     try:
         xml = objectify.fromstring(message)
         return xml
@@ -46,6 +60,16 @@ def parse_xml(message: str):
 
 
 async def call_handlers(self, rooms, command, xml, user, cntr):
+    """
+    Calls the correct handler function given a command from xml.
+    :param self:
+    :param rooms:
+    :param command:
+    :param xml:
+    :param user:
+    :param cntr:
+    :return:
+    """
     try:
         await eventHandlers[str(command)](self, rooms, xml, user, cntr)
     except KeyError as e:
@@ -53,7 +77,12 @@ async def call_handlers(self, rooms, command, xml, user, cntr):
 
 
 async def ensure_disconnect(self, user):
-    # Ensure Disconnection
+    """
+    Makes sure the user is removed from all rooms and other clients in the same room are notified.
+    :param self:
+    :param user:
+    :return:
+    """
     for room_id in rms:
         room = rms[room_id]
         if user.id in room.users:
@@ -70,9 +99,15 @@ async def ensure_disconnect(self, user):
 class Server:
     def __init__(self):
         self.user_count = 0
-        self.lock = asyncio.Lock()
+        self.lock = Lock()
 
     async def handle(self, reader, writer):
+        """
+        Handles in coming packets from the user.
+        :param reader:
+        :param writer:
+        :return:
+        """
         global counter
         async with self.lock:
             counter += 1
@@ -106,6 +141,10 @@ class Server:
 
 
 async def main():
+    """
+    Main Loop of the Program initializes Server object, pass in config parameters and starts listening for users
+    :return:
+    """
     server_obj = Server()
     server = await start_server(server_obj.handle, config['connection']['address'], config['connection']['port'])
     address = server.sockets[0].getsockname()
@@ -114,4 +153,9 @@ async def main():
         await server.serve_forever()
 
 
-run(main())
+def start():
+    """
+    Starts the main function and the program.
+    :return:
+    """
+    run(main())

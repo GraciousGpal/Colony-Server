@@ -7,6 +7,10 @@ config = get_config()
 
 
 def setup_logging():
+    """
+    Setup logging and loads logging level.
+    :return:
+    """
     root = logging.getLogger()
     level = logging.INFO
     if config['logging']['level'] == "debug":

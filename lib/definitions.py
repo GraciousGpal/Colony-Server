@@ -67,11 +67,21 @@ class Room:
         self.remove_room = False
 
     async def add_user(self, user: User):
+        """
+        Adds User to the room, sets user id and increments room user count.
+        :param user:
+        :return:
+        """
         user.room = self.id
         self.users[user.id] = user
         self.ucnt += 1
 
     async def remove_user(self, user_id: int):
+        """
+        Removes User from room, decrements user count and check if room is empty
+        :param user_id:
+        :return:
+        """
         user = self.users.pop(user_id)
         if user is not None:
             self.ucnt -= 1
@@ -80,6 +90,11 @@ class Room:
             raise UserNotFoundInRoom
 
     async def move_user(self, rms, user_id: int, dst: int, user):
+        """
+        Moves a user from the room to the destination.
+        :param user_id:
+        :return:
+        """
         if self.id == dst:
             user.room = self.id
             self.users[user.id] = user
@@ -96,6 +111,10 @@ class Room:
             raise UserNotFoundInRoom
 
     def is_room_empy(self):
+        """
+        Checks if the Room is Empty and Returns True/False
+        :return:
+        """
         if len(self.users) == 0 and self.id != 1 and self.id != 42:
             self.remove_room = True
             return True
