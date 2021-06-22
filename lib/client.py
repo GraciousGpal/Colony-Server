@@ -127,6 +127,10 @@ class Server:
                 except ValueError:
                     pass
                 for msg in messages:
+                    if msg == '<policy-file-request/>':
+                        await user.send(
+                            f"<cross-domain-policy><allow-access-from domain='*' to-ports='{config['connection']['port']}' /></cross-domain-policy>")
+                        continue
                     xml = parse_xml(msg)
                     if xml is None:
                         continue
