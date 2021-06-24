@@ -1,32 +1,36 @@
+from asyncio import sleep
 from logging import getLogger
 from sys import exit
 from xml.etree import ElementTree as Et
 
 from lxml import objectify
 
+import lib.definitions as d
 from lib.admin import is_mod
 from lib.config import get_config
 from lib.definitions import Room
 
 # Load Configuration
+
 config = get_config()
 
 log = getLogger(__name__)
 
 
-async def version_check(self, rms, xml, user, _):
+async def version_check(self, rms, xml, user):
     # Allows Further Communications
     comm_port = config['connection']['port']
     await user.send(
         f"<cross-domain-policy><allow-access-from domain='*' to-ports='{comm_port}' /></cross-domain-policy>")
     version = xml.body.ver.attrib['v']
-    action = 'apiOK'
-    if version != config['settings']['version']:
-        action = 'apiKO'
-    await user.send(f"<msg t='sys'><body action='{action}' r='0'></body></msg>")
+
+    async with self.lock:
+        user.client_version = int(version)
+
+    await user.send(f"<msg t='sys'><body action='apiOK' r='0'></body></msg>")
 
 
-async def login(self, rms, xml, user, _):
+async def login(self, rms, xml, user):
     msg = "<msg t='sys'><body action='logOK' r='0'><login n='{}' id='{}' mod='{}'/></body></msg>"
     name = f"guest_{user.id}"
     if xml.body.login.nick.text != "":
@@ -38,14 +42,21 @@ async def login(self, rms, xml, user, _):
     await user.send(msg.format(user.name, user.id, user.mod))
     log.info(f"{user.name}({user.id}) logged in!")
 
+    # Kick User if Version does not Match
+    if user.client_version != config['settings']['version']:
+        await user.send(
+            f"<msg t='sys'><body action='dmnMsg' r='0'><user id='0' /><txt><![CDATA[You do not have the Latest Version of the Game!]]></txt></body></msg>")
+        await sleep(5)
+        user.writer.close()
 
-async def load_buddy_list(self, rms, xml, user, _):
+
+async def load_buddy_list(self, rms, xml, user):
     # Load Buddy List #TODO Implement Buddy list, currently returns emtpy response.
     msg = "<msg t='sys'><body action='bList' r='-1'><bList></bList></body></msg>"
     await user.send(msg)
 
 
-async def getRoomList(self, rms, xml, user, _):
+async def getRoomList(self, rms, xml, user):
     msg = "<msg t='sys'><body action='rmList' r='0'><rmList>"
     rms = {k: rms[k] for k in rms if not rms[k].is_room_empy()}
     for r in rms:
@@ -55,7 +66,7 @@ async def getRoomList(self, rms, xml, user, _):
     await user.send(msg)
 
 
-async def join_room(self, rms, xml, user, counter, room_join_id=None):
+async def join_room(self, rms, xml, user, room_join_id=None):
     r = xml.body.room.attrib
     if room_join_id is not None:
         r = {'id': room_join_id}
@@ -91,10 +102,10 @@ async def join_room(self, rms, xml, user, counter, room_join_id=None):
     if int(rms[user.room].id) == 1:
         await user.send(
             f"<msg t='sys'><body action='pubMsg' r='{rms[user.room].id}'><user id='{user.id}' /><txt><![CDATA[{msg}]]></txt></body></msg>")
-    log.info(f"User Joined {rms[user.room].name} ({rms[user.room].id})")
+    log.info(f"User ({user.id}, {user.name}) Joined {rms[user.room].name} ({rms[user.room].id})")
 
 
-async def set_usr_variables(self, rms, xml, user, _):
+async def set_usr_variables(self, rms, xml, user):
     user = rms[user.room].users[user.id]
     room = rms[user.room].users
     vars = {'userName': user.name, 'race': user.race, 'team': user.team, 'color': user.color, 'pts': user.pts,
@@ -148,14 +159,13 @@ def check_for_commands(string: str):
     return None
 
 
-async def publish_message(self, rms, xml, user, _):
+async def publish_message(self, rms, xml, user):
     """
     Sends a message to users in the room or execute string commands.
     :param self:
     :param rms:
     :param xml:
     :param user:
-    :param _:
     :return:
     """
     cmd = check_for_commands(xml.body.txt)
@@ -170,24 +180,28 @@ async def publish_message(self, rms, xml, user, _):
         await room[usr_id].send(
             f"<msg t='sys'><body action='pubMsg' r='{rms[user.room].id}'><user id='{user.id}' /><txt><![CDATA[{xml.body.txt}]]></txt></body></msg>")
 
-async def create_room(self, rms, xml, user, counter, game_room=False):
+
+async def create_room(self, rms, xml, user, game_room=False):
     async with self.lock:
-        counter += 1
+        d.counter += 1
+
     msg = f"<msg t='sys'><body action='roomAdd' r='{rms[user.room].id}'>"
-    msg += f"<rm id = '{counter}' priv = '0' temp = '{xml.body.room.attrib['tmp']}' game = '{xml.body.room.attrib['gam']}' max = '4' spec = '{xml.body.room.attrib['spec']}' limbo = '0' ><name><![CDATA[{xml.body.room.name.text}]]></name><vars /></rm></body></msg>"
+    msg += f"<rm id = '{d.counter}' priv = '0' temp = '{xml.body.room.attrib['tmp']}' game = '{xml.body.room.attrib['gam']}' max = '4' spec = '{xml.body.room.attrib['spec']}' limbo = '0' ><name><![CDATA[{xml.body.room.name.text}]]></name><vars /></rm></body></msg>"
+
     async with self.lock:
-        rms[counter] = Room(xml.body.room.name.text, counter)
-        rms[counter].temp = xml.body.room.attrib['tmp']
-        rms[counter].game = xml.body.room.attrib['gam']
-        rms[counter].maxu = 4
-        rms[counter].maxs = xml.body.room.attrib['spec']
+        rms[d.counter] = Room(xml.body.room.name.text, d.counter)
+        rms[d.counter].temp = xml.body.room.attrib['tmp']
+        rms[d.counter].game = xml.body.room.attrib['gam']
+        rms[d.counter].maxu = 4
+        rms[d.counter].maxs = xml.body.room.attrib['spec']
     for usr_id in rms[user.room].users:
         await rms[user.room].users[usr_id].send(msg)
-    log.info(f"{user.name}({user.id}) created the room {rms[counter].name}")
-    await join_room(self, rms, xml, user, counter, counter)
+    log.info(f"{user.name}({user.id}) created the room {rms[d.counter].name}")
+    if int(xml.body.attrib['r']) in rms:
+        await join_room(self, rms, xml, user, d.counter)
 
 
-async def set_room_variables(self, rms, xml, user, _):
+async def set_room_variables(self, rms, xml, user):
     msg = f"<msg t='sys'><body action='rVarsUpdate' r='{user.room}'><vars>"
     for x in xml.body.vars.var:
         msg += f"<var n='{x.attrib['n']}' t='{x.attrib['t']}'><![CDATA[{xml.body.vars.var.text}]]></var>"
@@ -198,7 +212,7 @@ async def set_room_variables(self, rms, xml, user, _):
     await user.send(msg)
 
 
-async def asObj_(self, rms, xml, user, _):
+async def asObj_(self, rms, xml, user):
     room_id = xml.body.attrib['r']
     dict_format_obj = objectify.fromstring(xml.body.text)
     rm_vars = get_room_vars(dict_format_obj)
@@ -217,7 +231,7 @@ async def asObj_(self, rms, xml, user, _):
             if int(user.id) != int(usr):
                 await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
-        #await user.send(msg)
+        # await user.send(msg)
 
     if rm_vars['id'] == 'updateTeamDisplay':
         array = get_array_objects(dict_format_obj, xml.body.text)
@@ -227,7 +241,7 @@ async def asObj_(self, rms, xml, user, _):
                 rms[int(room_id)].usr_pos[int(idx)] = var
 
 
-async def kill_unit(self, rms, xml, user, rm_vars, dict_format_obj):
+async def kill_unit(rms, rm_vars, dict_format_obj):
     data = {}
     for var in dict_format_obj.obj.var:
         data[var.attrib['n']] = (var.text, var.attrib['t'])
@@ -239,7 +253,7 @@ async def kill_unit(self, rms, xml, user, rm_vars, dict_format_obj):
         await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
 
-async def sendChat(self, rms, xml, user, rm_vars, dict_format_obj):
+async def sendChat(rms, rm_vars, dict_format_obj):
     msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
     for var in dict_format_obj.obj.var:
         msg += f"<var n='{var.attrib['n']}' t='{var.attrib['t']}'>{var.text}</var>"
@@ -248,7 +262,7 @@ async def sendChat(self, rms, xml, user, rm_vars, dict_format_obj):
         await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
 
-async def asObjG_(self, rms, xml, user, counter):
+async def asObjG_(self, rms, xml, user):
     room_id = xml.body.attrib['r']
     dict_format_obj = objectify.fromstring(xml.body.text)
     rm_vars = get_room_vars(dict_format_obj)
@@ -258,16 +272,16 @@ async def asObjG_(self, rms, xml, user, counter):
         await updateTeamDisplay(self, rms, xml, rm_vars, dict_format_obj)
 
     elif rm_vars['id'] == 'beginGame':
-        await beginGame(self, rms, xml, user, rm_vars, dict_format_obj, counter)
+        await beginGame(rms, xml, rm_vars, dict_format_obj)
 
     elif rm_vars['id'] == 'killUnit':
-        await kill_unit(self, rms, xml, user, rm_vars, dict_format_obj)
+        await kill_unit(rms, rm_vars, dict_format_obj)
 
     elif rm_vars['id'] == 'orderUnit':
         await orderUnit(self, rms, xml, user, rm_vars, dict_format_obj)
 
     elif rm_vars['id'] == 'sendChat':
-        await sendChat(self, rms, xml, user, rm_vars, dict_format_obj)
+        await sendChat(rms, rm_vars, dict_format_obj)
     else:
         raise Exception(f"{rm_vars['id']} New Code Found.")
 
@@ -301,7 +315,7 @@ async def updateTeamDisplay(self, rms, xml, rm_vars, dict_obj):
         await rms[int(rm_vars['rm_id'])].users[usr].send(msg)
 
 
-async def beginGame(self, rms, xml, user, rm_vars, dict_obj, counter):
+async def beginGame(rms, xml, rm_vars, dict_obj):
     arrays = get_array_objects(dict_obj, xml.body.text)
     rm_vars['randName'] = dict_obj.obj.var.text
     msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj><![CDATA[<dataObj><var n='id' t='s'>beginGame</var><obj t='o' o='sub'><var n='randName' t='s'>{rm_vars['randName']}</var>"
@@ -320,7 +334,7 @@ async def beginGame(self, rms, xml, user, rm_vars, dict_obj, counter):
         f"A game has started in room {rms[int(rm_vars['rm_id'])].name}({rm_vars['rm_id']}) with [{user_names}]")
 
 
-async def xtReq_(self, rms, xml, user, counter):
+async def xtReq_(self, rms, xml, user):
     room_id = xml.body.attrib['r']
     dict_format_obj = objectify.fromstring(xml.body.text)
     rm_vars = get_room_vars(dict_format_obj)
@@ -402,10 +416,10 @@ def get_array_objects(dict_obj, xml_text):
 
 
 def get_room_vars(obj):
-    vars = {}
+    rm_vars = {}
     for var in obj.var:
-        vars[var.attrib['n']] = var.text
-    return vars
+        rm_vars[var.attrib['n']] = var.text
+    return rm_vars
 
 
 eventHandlers = {

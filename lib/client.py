@@ -3,6 +3,7 @@ from asyncio.exceptions import IncompleteReadError
 
 from lxml import objectify
 
+import lib.definitions
 from lib.config import get_config
 from lib.definitions import User, Room
 from lib.events import eventHandlers
@@ -14,8 +15,7 @@ log = setup_logging()
 # Load Configuration
 config = get_config()
 
-# Globals
-counter = 1
+# Rooms
 rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
 
 
@@ -59,7 +59,7 @@ def parse_xml(message: str):
         log.error(f'Parse Error Occurred! ({e}) (message)')
 
 
-async def call_handlers(self, rooms, command, xml, user, cntr):
+async def call_handlers(self, rooms, command, xml, user):
     """
     Calls the correct handler function given a command from xml.
     :param self:
@@ -67,11 +67,10 @@ async def call_handlers(self, rooms, command, xml, user, cntr):
     :param command:
     :param xml:
     :param user:
-    :param cntr:
     :return:
     """
     try:
-        await eventHandlers[str(command)](self, rooms, xml, user, cntr)
+        await eventHandlers[str(command)](self, rooms, xml, user)
     except KeyError as e:
         log.error(f"Command Failed to Execute! ({command}) ({e})")
 
@@ -108,10 +107,9 @@ class Server:
         :param writer:
         :return:
         """
-        global counter
         async with self.lock:
-            counter += 1
-        user = User(reader, writer, counter)
+            lib.definitions.counter += 1
+        user = User(reader, writer, lib.definitions.counter)
         log.info(f'User {user.address} connected!')
         try:
             while True:
@@ -136,7 +134,7 @@ class Server:
                         continue
                     command, room = get_commands(xml)
                     try:
-                        await call_handlers(self, rms, command, xml, user, counter)
+                        await call_handlers(self, rms, command, xml, user)
                     except ConnectionResetError:
                         break
         finally:

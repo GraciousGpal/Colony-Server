@@ -65,6 +65,7 @@ class Room:
         self.usr_pos = [None, None, None, None]
         self.user_pos_id = [0, 0, 0, 0]
         self.remove_room = False
+        self.client_version = 0
 
     async def add_user(self, user: User):
         """
@@ -120,3 +121,7 @@ class Room:
             return True
         else:
             return False
+
+
+# Global Counter
+counter = 1
