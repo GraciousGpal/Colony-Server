@@ -43,7 +43,7 @@ async def login(self, rms, xml, user):
     log.info(f"{user.name}({user.id}) logged in!")
 
     # Kick User if Version does not Match
-    if user.client_version != config['settings']['version']:
+    if user.client_version != int(config['settings']['version']):
         await user.send(
             f"<msg t='sys'><body action='dmnMsg' r='0'><user id='0' /><txt><![CDATA[You do not have the Latest Version of the Game!]]></txt></body></msg>")
         await sleep(5)
@@ -136,7 +136,7 @@ def msg_restart():
     exit(42)
 
 
-def msg_update():
+def msg_update(r):
     """
     Exits the program with code 42 (Git Update)
     :return:
