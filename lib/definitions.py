@@ -14,15 +14,15 @@ class User:
         self.password = ""
         self.race = 0
         self.rank = 1
-        self.gamesPlayed = 0
-        self.gamesWon = 0
-        self.gamesConsecutiveWins = 0
+        self.games_played = 0
+        self.games_won = 0
+        self.games_consecutive_wins = 0
         self.team = 0
         self.color = 0
         self.pts = 0
         self.reader = reader
         self.writer = writer
-        self.address = writer.get_extra_info('peername')
+        self.address = writer.get_extra_info("peername")
 
     @staticmethod
     def clean(a):
@@ -32,9 +32,9 @@ class User:
         """
         a = a + "\x00"
         try:
-            a = a.encode('ascii')
+            a = a.encode("ascii")
         except UnicodeEncodeError:
-            a = a.encode('UTF-8')
+            a = a.encode("UTF-8")
         return a
 
     async def send(self, data):
@@ -45,7 +45,7 @@ class User:
         """
         data = self.clean(data)
         self.writer.write(data)
-        log.debug("Sent: %r" % data)
+        log.debug("Sent: %r", data)
         await self.writer.drain()
 
 
@@ -55,17 +55,20 @@ class Room:
         self.priv = 0
         self.temp = 0
         self.game = 0
-        self.pwd = ''  # Room Password
+        self.pwd = ""  # Room Password
         self.ucnt = 0  # User count
         self.maxu = 100  # Max User Count
         self.maxs = 0  # Max Spectator Count
         self.name = name
         self.gs = 0  # Game type
+        self.random_factor = 0  # Random Factor
+        self.room_leader = 0  # Room Leader
         self.users = {}
         self.usr_pos = [None, None, None, None]
         self.user_pos_id = [0, 0, 0, 0]
         self.remove_room = False
         self.client_version = 0
+        self.ally = 0  # all chat or ally chat
 
     async def add_user(self, user: User):
         """
@@ -90,7 +93,7 @@ class Room:
         else:
             raise UserNotFoundInRoom
 
-    async def move_user(self, rms, user_id: int, dst: int, user):
+    async def move_user(self, user_id: int, dst: int, user):
         """
         Moves a user from the room to the destination.
         :param user_id:
@@ -119,9 +122,11 @@ class Room:
         if len(self.users) == 0 and self.id != 1 and self.id != 42:
             self.remove_room = True
             return True
-        else:
-            return False
+        return False
 
 
 # Global Counter
 counter = 1
+
+# Default Rooms
+rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
