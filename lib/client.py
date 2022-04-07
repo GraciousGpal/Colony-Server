@@ -5,6 +5,7 @@ from asyncio import start_server, run, Lock
 from asyncio.exceptions import IncompleteReadError
 
 # from lib.general_logging import setup_logging
+from charset_normalizer import from_bytes
 from loguru import logger as log
 from lxml import objectify
 
@@ -45,7 +46,16 @@ async def listen_for_messages(user: User):
     try:
         message = data.decode("ascii")
     except UnicodeDecodeError:
-        message = data.decode("utf-8")
+        try:
+            message = data.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                log.warning("Using fallback")
+                message = from_bytes(data).best()
+                log.warning(f"Decode failed on : {str(message)}")
+            except Exception:
+                return ""
+
     log.debug(f"Received :{str(message)}")
     if len(message) == 0:
         log.info(f"{user.name}, {user.address} has disconnected")
