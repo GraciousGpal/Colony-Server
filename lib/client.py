@@ -46,9 +46,9 @@ async def listen_for_messages(user: User):
         message = data.decode("ascii")
     except UnicodeDecodeError:
         message = data.decode("utf-8")
-    log.debug("Received :%s", str(message))
+    log.debug(f"Received :{str(message)}")
     if len(message) == 0:
-        log.info("%s, %s has disconnected", user.name, user.address)
+        log.info(f"{user.name}, {user.address} has disconnected")
         return
     return message
 
@@ -72,7 +72,7 @@ def parse_xml(message: str):
         xml = objectify.fromstring(message)
         return xml
     except Exception as e:
-        log.error("Parse Error Occurred! (%s) (message)", e)
+        log.error(f"Parse Error Occurred! ({e}) (message)", )
 
 
 async def call_handlers(self, command, xml, user):
@@ -87,7 +87,7 @@ async def call_handlers(self, command, xml, user):
     try:
         await event_handlers[str(command)](self, xml, user)
     except KeyError as e:
-        log.error("Command Failed to Execute! (%s) (%s)", command, e)
+        log.error(f"Command Failed to Execute! ({command}) ({e})")
 
 
 async def ensure_disconnect(self, user):
@@ -109,7 +109,7 @@ async def ensure_disconnect(self, user):
                 await room.users[usr].send(
                     f"<msg t='sys'><body action='uCount' r='{user.room}' u='{len(room.users)}'></body></msg>"
                 )
-    log.info("Connection lost to %s", user.address)
+    log.info(f"Connection lost to {user.address}")
 
 
 class Server:
@@ -128,7 +128,7 @@ class Server:
         async with self.lock:
             d.counter += 1
         user = User(reader, writer, d.counter)
-        log.info("User %s connected!", user.address)
+        log.info(f"User {user.address} connected!")
         try:
             while True:
                 try:
@@ -172,7 +172,7 @@ async def main():
         server_obj.handle, config["connection"]["address"], config["connection"]["port"]
     )
     address = server.sockets[0].getsockname()
-    log.info(F"Serving on Ip: {address[0]} Port: {address[1]}")
+    log.info(f"Serving on Ip: {address[0]} Port: {address[1]}")
     async with server:
         await server.serve_forever()
 
