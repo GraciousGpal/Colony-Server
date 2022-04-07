@@ -1,11 +1,11 @@
-import logging
+from loguru import logger as log
 from multiprocessing import Process
 from os import popen
 from time import sleep
 
-from lib.client import start
+from lib.client import start, launch_discord
 
-apps = {'colony': start}
+apps = {'colony': start, 'discord': launch_discord}
 
 if __name__ == '__main__':
     processes = {}
@@ -24,6 +24,7 @@ if __name__ == '__main__':
 
 
     for app in apps:
+        log.info(f"Starting : {app}")
         start_process(app)
 
     while len(processes) > 0:
@@ -36,25 +37,25 @@ if __name__ == '__main__':
                 continue
             elif exitcode is None and not alive:  # Not finished and not running.
                 # Do your error handling and restarting here assigning the new process to processes[n]
-                logging.error(a, 'Process is Unable to Start!')
+                log.error(a, 'Process is Unable to Start!')
                 start_process(n)
             elif exitcode < 0 or exitcode == 3:
                 if exitcode < 0:
-                    logging.error("Process Ended with an error restarting!")
+                    log.error("Process Ended with an error restarting!")
                 start_process(n)
             elif exitcode == 42:
-                logging.info("Process Restart Called: restarting!")
+                log.info("Process Restart Called: restarting!")
                 start_process(n)
             elif exitcode == 43:
-                logging.info("Process Update Called: Updating!")
+                log.info("Process Update Called: Updating!")
                 stream = popen('git pull')
                 output = stream.read()
                 if output == 'Already up to date.\n':
-                    logging.info(output)
+                    log.info(output)
                 elif 'file changed' in output:
-                    logging.info("Server Updated!")
+                    log.info("Server Updated!")
                 else:
-                    logging.error("Update Failed!")
+                    log.error("Update Failed!")
                 start_process(n)
             else:
                 print(a, 'Process Completed')

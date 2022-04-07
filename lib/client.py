@@ -1,18 +1,20 @@
+import os
 import urllib.error
 import urllib.request
 from asyncio import start_server, run, Lock
 from asyncio.exceptions import IncompleteReadError
 
+# from lib.general_logging import setup_logging
+from loguru import logger as log
 from lxml import objectify
 
 import lib.definitions as d
 from lib.config import get_config
 from lib.definitions import User
 from lib.events import event_handlers
-from lib.general_logging import setup_logging
 
 # Logging
-log = setup_logging()
+# log = setup_logging()
 
 # Load Configuration
 config = get_config()
@@ -170,7 +172,7 @@ async def main():
         server_obj.handle, config["connection"]["address"], config["connection"]["port"]
     )
     address = server.sockets[0].getsockname()
-    log.info("Serving on Ip: %s Port: %s", address[0], address[1])
+    log.info(F"Serving on Ip: {address[0]} Port: {address[1]}")
     async with server:
         await server.serve_forever()
 
@@ -181,3 +183,7 @@ def start():
     :return:
     """
     run(main())
+
+
+def launch_discord():
+    d.dc.run(os.getenv('DISCORD_API'))

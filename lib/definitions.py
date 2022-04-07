@@ -1,8 +1,28 @@
-from logging import getLogger
+import asyncio
+from multiprocessing import Queue
+from queue import Empty
+
+import discord
+from loguru import logger as log
 
 from lib.exceptions import UserNotFoundInRoom
 
-log = getLogger(__name__)
+dc = discord.Client()
+channel = dc.get_channel(934229000392433675)
+
+message_channel = Queue()
+
+
+@dc.event
+async def on_ready():
+    log.info(f'{dc.user} has connected to Discord!')
+    while True:
+        try:
+            # If `False`, the program is not blocked, it will throw the Queue.Empty exception.
+            user = message_channel.get(False)
+            await channel.send(f"{user} has joined the lobby!")
+        except Empty:
+            await asyncio.sleep(1)
 
 
 class User:

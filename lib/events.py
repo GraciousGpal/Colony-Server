@@ -2,7 +2,6 @@ from asyncio import sleep
 from logging import getLogger
 from sys import exit as sys_exit
 from xml.etree import ElementTree as Et
-
 from lxml import objectify
 
 import lib.definitions as d
@@ -15,7 +14,6 @@ from lib.exceptions import NewVarCase
 config = get_config()
 
 log = getLogger(__name__)
-
 
 async def enable_communication(self, xml, user):
     """
@@ -63,6 +61,9 @@ async def login(self, xml, user):
         )
         await sleep(5)
         user.writer.close()
+    d.message_channel.put(user.name, block=False)
+
+
 
 
 async def send_admin_message(user, msg):
