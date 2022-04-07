@@ -8,7 +8,6 @@ from loguru import logger as log
 from lib.exceptions import UserNotFoundInRoom
 
 dc = discord.Client()
-channel = dc.get_channel(934229000392433675)
 
 message_channel = Queue()
 
@@ -16,6 +15,7 @@ message_channel = Queue()
 @dc.event
 async def on_ready():
     log.info(f'{dc.user} has connected to Discord!')
+    channel = dc.get_channel(934229000392433675)
     while True:
         try:
             # If `False`, the program is not blocked, it will throw the Queue.Empty exception.
