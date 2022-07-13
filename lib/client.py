@@ -28,7 +28,7 @@ def get_latest_version():
     """
     try:
         with urllib.request.urlopen(
-                "https://colony-game.000webhostapp.com/version"
+                "https://raw.githubusercontent.com/SynthKittenDev/Colony-Player/main/gameVersion"
         ) as f:
             return int(f.read().decode("utf-8"))
     except urllib.error.URLError as e:
