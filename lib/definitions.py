@@ -65,7 +65,7 @@ class User:
         """
         data = self.clean(data)
         self.writer.write(data)
-        log.debug("Sent: %r", data)
+        log.debug(f"Sent: {data}")
         await self.writer.drain()
 
 

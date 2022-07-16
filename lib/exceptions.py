@@ -1,6 +1,4 @@
-from logging import getLogger
-
-log = getLogger(__name__)
+from loguru import logger as log
 
 
 class UserDisconnected(Exception):

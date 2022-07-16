@@ -1,11 +1,9 @@
-from logging import getLogger
+from loguru import logger as log
 
 from lib.config import get_config
 
 # Load Configuration
 config = get_config()
-
-log = getLogger(__name__)
 
 
 def is_mod(name):

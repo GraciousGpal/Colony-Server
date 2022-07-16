@@ -1,5 +1,5 @@
 from asyncio import sleep
-from logging import getLogger
+from loguru import logger as log
 from sys import exit as sys_exit
 from xml.etree import ElementTree as Et
 from lxml import objectify
@@ -13,7 +13,6 @@ from lib.exceptions import NewVarCase
 
 config = get_config()
 
-log = getLogger(__name__)
 
 async def enable_communication(self, xml, user):
     """
@@ -52,7 +51,7 @@ async def login(self, xml, user):
         user.name = name
         user.mod = mod
     await user.send(msg.format(user.name, user.id, user.mod))
-    log.info("%s(%s) logged in!", user.name, user.id)
+    log.info("{user.name}({user.id}) logged in!")
 
     # Kick User if Version does not Match
     if user.client_version != int(self.version):
@@ -62,8 +61,6 @@ async def login(self, xml, user):
         await sleep(5)
         user.writer.close()
     d.message_channel.put(user.name, block=False)
-
-
 
 
 async def send_admin_message(user, msg):
@@ -191,8 +188,7 @@ async def join_room(self, xml, user, room_join_id=None):
             f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'><user id='{user.id}' /><txt>"
             f"<![CDATA[{config['welcome']['message']}]]></txt></body></msg>"
         )
-    log.info("User (%s, %s) Joined %s (%s)", user.id, user.name,
-             d.rms[user.room].name, d.rms[user.room].id)
+    log.info(f"User ({user.id}, {user.name}) Joined {d.rms[user.room].name} ({d.rms[user.room].id})")
 
 
 async def set_usr_variables(self, xml, user):
@@ -270,7 +266,7 @@ async def restart(user, sleep_time=10):
     :param sleep_time:
     :return:
     """
-    log.info("Restart Triggered by %s(%s)(%s)", user.name, user.id, user.address)
+    log.info(f"Restart Triggered by {user.name} id: (user.id) addr: ({user.address})")
     await notify_all_users(f"Server is about to restart in {sleep_time}s.")
     await sleep(sleep_time)
     sys_exit(42)
@@ -283,7 +279,7 @@ async def update(user, sleep_time=10):
     :param sleep_time:
     :return:
     """
-    log.info("Update Triggered by %s(%s)(%s)", user.name, user.id, user.address)
+    log.info(f"Update Triggered by {user.name} id: ({user.id}) addr: ({user.address})")
     await notify_all_users(
         f"Server is about to restart for an update in {sleep_time}s."
     )
@@ -319,8 +315,8 @@ async def process_custom_commands(cmd, user):
             await restart(user)
         if cmd == "/update":
             await restart(user)
-        if cmd == "/showrooms":
-            await show_rooms(user)
+    if cmd == "/showrooms":
+        await show_rooms(user)
 
 
 async def publish_message(self, xml, user):
@@ -365,8 +361,7 @@ async def create_room(self, xml, user):
         d.rms[d.counter].maxs = xml.body.room.attrib["spec"]
     for usr_id in d.rms[user.room].users:
         await d.rms[user.room].users[usr_id].send(msg)
-    log.info(
-        "%s(%s) created the room %s", user.name, user.id, d.rms[d.counter].name)
+    log.info(f"{user.name}({user.id}) created the room {d.rms[d.counter].name}")
     if int(xml.body.attrib["r"]) in d.rms:
         await join_room(self, xml, user, d.counter)
 
@@ -469,11 +464,14 @@ async def send_ally_chat(user, rm_vars, dict_format_obj, ally=False):
     for var in dict_format_obj.obj.var:
         msg += f"<var n='{var.attrib['n']}' t='{var.attrib['t']}'>{var.text}</var>"
     msg = f"{msg}</obj><var n='id' t='s'>{rm_vars['id']}</var></dataObj>]]></dataObj></body></msg>"
+
     for usr in d.rms[int(rm_vars["rm_id"])].users:
         if ally:
             if int(usr) == int(rm_vars['_$$_']):
                 await d.rms[int(rm_vars["rm_id"])].users[usr].send(msg)
         else:
+            if usr == user.id:
+                continue
             await d.rms[int(rm_vars["rm_id"])].users[usr].send(msg)
 
 
@@ -575,9 +573,7 @@ async def begin_game(xml, rm_vars, dict_obj):
         )
         for user in d.rms[int(rm_vars["rm_id"])].users
     ]
-    log.info(
-        "A game has started in room %s(%s) with [%s]",
-        d.rms[int(rm_vars['rm_id'])].name, rm_vars['rm_id'], user_names)
+    log.info(f"A game has started in room {d.rms[int(rm_vars['rm_id'])].name}({rm_vars['rm_id']}) with {user_names}")
 
 
 async def xt_req(self, xml, user):

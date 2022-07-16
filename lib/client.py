@@ -3,8 +3,6 @@ import urllib.error
 import urllib.request
 from asyncio import start_server, run, Lock
 from asyncio.exceptions import IncompleteReadError
-
-# from lib.general_logging import setup_logging
 from charset_normalizer import from_bytes
 from loguru import logger as log
 from lxml import objectify
@@ -14,11 +12,10 @@ from lib.config import get_config
 from lib.definitions import User
 from lib.events import event_handlers
 
-# Logging
-# log = setup_logging()
-
 # Load Configuration
 config = get_config()
+# Set Logging Level
+os.environ["LOGURU_LEVEL"] = "DEBUG" if config['logging']['level'] == "debug" else "INFO"
 
 
 def get_latest_version():
@@ -34,6 +31,20 @@ def get_latest_version():
     except urllib.error.URLError as e:
         print(e.reason)
         return config["settings"]["version"]
+
+
+def append_new_line(file_name, text_to_append):
+    """Append given text as a new line at the end of file"""
+    # Open the file in append & read mode ('a+')
+    with open(file_name, "a+") as file_object:
+        # Move read cursor to the start of file.
+        file_object.seek(0)
+        # If file is not empty then append '\n'
+        data = file_object.read(100)
+        if len(data) > 0:
+            file_object.write("\n")
+        # Append text at the end of file
+        file_object.write(text_to_append)
 
 
 async def listen_for_messages(user: User):
@@ -53,6 +64,8 @@ async def listen_for_messages(user: User):
                 log.warning("Using fallback")
                 message = from_bytes(data).best()
                 log.warning(f"Decode failed on : {str(message)}")
+                # Write the failed data into file for analysis later on.
+                append_new_line('unparsed.log', data)
             except Exception:
                 return ""
 
