@@ -43,15 +43,21 @@ async def login(self, xml, user):
     :return:
     """
     msg = "<msg t='sys'><body action='logOK' r='0'><login n='{}' id='{}' mod='{}'/></body></msg>"
-    name = f"guest_{user.id}"
     if xml.body.login.nick.text != "":
         name = xml.body.login.nick.text
+    else:
+        name = f"guest_{user.id}"
+        async with self.lock:
+            d.current_guests_ids.append(user.id)
     mod = 1 if is_mod(str(name).lower()) else 0
+    user_db_data = self.database.get_user_info(name)
     async with self.lock:
         user.name = name
         user.mod = mod
+        if user_db_data is not None:
+            user.id = user_db_data[0]
     await user.send(msg.format(user.name, user.id, user.mod))
-    log.info("{user.name}({user.id}) logged in!")
+    log.info(f"{user.name}({user.id}) logged in!")
 
     # Kick User if Version does not Match
     if user.client_version != int(self.version):
@@ -60,8 +66,20 @@ async def login(self, xml, user):
         )
         await sleep(5)
         user.writer.close()
+    # Create a new entry for user if not exists
+    if "guest_" not in user.name:
+        self.database.add_user(user.name)
     d.message_channel.put(user.name, block=False)
 
+    
+    # Buddy Join Event
+    if "guest_" not in user.name:
+        buddies = self.database.get_buddies(user.name)
+        for buddy_name in buddies:
+            usr_found = await d.find_user(name=buddy_name)
+            if usr_found is not None:
+                msg_bu = f"<msg t='sys'><body action='bUpd' r='-1'><b s='1' i='{user.id}'><n><![CDATA[{user.name}]]></n></b></body></msg>"
+                await usr_found.send(msg_bu)
 
 async def send_admin_message(user, msg):
     """
@@ -84,8 +102,16 @@ async def load_buddy_list(self, xml, user):
     :param user:
     :return:
     """
-    # Load Buddy List #TODO Implement Buddy list, currently returns emtpy response.
-    msg = "<msg t='sys'><body action='bList' r='-1'><bList></bList></body></msg>"
+    # Load Buddy List
+    buddies = self.database.get_buddies(user.name)
+    data_out = ""
+    for buddy in buddies:
+        bdy = await d.find_user(name=buddy)
+        if bdy:
+            data_out += f"<b s='1' i='{bdy.id}'><n><![CDATA[{buddy}]]></n></b>"
+        else:
+            data_out += f"<b s='0' i='-1'><n><![CDATA[{buddy}]]></n></b>"
+    msg = f"<msg t='sys'><body action='bList' r='-1'><bList>{data_out}</bList></body></msg>"
     await user.send(msg)
 
 
@@ -182,12 +208,26 @@ async def join_room(self, xml, user, room_join_id=None):
                     f"<var n='gamesPlayed' t='n'><![CDATA[{user.games_played}]]></var></vars></u></body></msg>"
                 )
 
+            # New user receives existing users' details
+            if selected_room.users[u].id != user.id:  # Exclude the new user
+                await user.send(
+                    f"<msg t='sys'><body action='uER' r='{selected_room.id}'><u i ='{selected_room.users[u].id}' m='{selected_room.users[u].mod}' s='0'"
+                    f" p='2'><n><![CDATA[{selected_room.users[u].name}]]></n><vars><var n='rank' t='n'><![CDATA[{selected_room.users[u].rank}]]></var>"
+                    f"<var n='gamesPlayed' t='n'><![CDATA[{selected_room.users[u].games_played}]]></var></vars></u></body></msg>"
+                )
+
     # Display welcome message when user enters main lobby.
     if int(d.rms[user.room].id) == 1:
-        await user.send(
-            f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'><user id='{user.id}' /><txt>"
-            f"<![CDATA[{config['welcome']['message']}]]></txt></body></msg>"
-        )
+        #await user.send(
+        #    f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'><user id='{user.id}' /><txt>"
+        #    f"<![CDATA[{config['welcome']['message']}]]></txt></body></msg>"
+        #)
+
+        welcome_msg = f"<font size='20' color='#008000'>{config['welcome']['message']}</font>"
+
+        welcome_msg = f"<msg t='sys'><body action='prvMsg' r='{d.rms[user.room].id}'><user id='-1' /><txt><![CDATA[ColonyBot!!&amp;&amp;!!<br>{welcome_msg}]]></txt></body></msg>"
+        await user.send(welcome_msg)
+        
     log.info(f"User ({user.id}, {user.name}) Joined {d.rms[user.room].name} ({d.rms[user.room].id})")
 
 
@@ -215,7 +255,7 @@ async def set_usr_variables(self, xml, user):
     for var in xml.body.vars.var:
         if var.attrib["n"] in usr_vars:
             async with self.lock:
-                usr_vars[var.attrib["n"]] = var.text
+                setattr(user, var.attrib["n"], var.text)
         else:
             raise NewVarCase(var.attrib['n'])
 
@@ -364,6 +404,16 @@ async def create_room(self, xml, user):
     log.info(f"{user.name}({user.id}) created the room {d.rms[d.counter].name}")
     if int(xml.body.attrib["r"]) in d.rms:
         await join_room(self, xml, user, d.counter)
+
+        try:
+            room_exited = int(xml.body.room.attrib["exit"])
+            msg = f"<msg t='sys'><body action='userGone' r='{room_exited}'><user id='{user.id}' /></body></msg>"
+            for usr_id in d.rms[room_exited].users:
+                await d.rms[room_exited].users[usr_id].send(msg)
+        except Exception as e:
+            log.error(e)
+    
+    
 
 
 async def set_room_variables(self, xml, user):
@@ -682,12 +732,51 @@ def get_room_vars(obj):
         rm_vars[var.attrib["n"]] = var.text
     return rm_vars
 
+async def add_to_buddy_list(self, xml, user):
+    """
+    Adds a user to the buddy list.
+    :param self:
+    :param xml:
+    :param user:
+    :return:
+    """
+    if self.database.get_user_info(xml.body.n.text) is not None:
+        self.database.add_buddy(user.name, xml.body.n.text)
+        msg = f"<msg t='sys'><body action='bAdd' r='-1'><b s='1' i='0'><n><![CDATA[{xml.body.n.text}]]></n></b></body></msg>"
+        await user.send(msg)
+    else:
+        log.error(f"User {user.name} not found in database!")
+
+async def send_private_message(self, xml, user):
+    """
+    Sends a private message to a user.
+    :param self:
+    :param xml:
+    :param user:
+    :return:
+    """
+    try:
+        msg_obj = xml.body.txt.text
+        target_user_id = xml.body.txt.attrib['rcp']
+        target_msg = msg_obj.split("!")[-1]
+
+        target_user = await d.find_user(user_id=int(target_user_id))
+        if target_user is None:
+            log.error("User not found in Rooms")
+            return
+        log.info(f"Private Message from {user.name} to {target_user.name}")
+        msg = f"<msg t='sys'><body action='prvMsg' r='{target_user.room}'><user id='{target_user.id}' /><txt><![CDATA[{user.name}!!&amp;&amp;!!{target_msg}]]></txt></body></msg>"
+        await target_user.send(msg)
+    except Exception as e:
+        log.error(f"Error: {e}")
 
 # Dictionary of Client Commands mapped to their handling functions
 event_handlers = {
     "verChk": enable_communication,
     "login": login,
     "loadB": load_buddy_list,
+    "addB": add_to_buddy_list,
+    "prvMsg": send_private_message,
     "getRmList": get_room_list,
     "joinRoom": join_room,
     "setUvars": set_usr_variables,

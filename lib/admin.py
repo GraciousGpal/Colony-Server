@@ -6,7 +6,7 @@ from lib.config import get_config
 config = get_config()
 
 
-def is_mod(name):
+def is_mod(name: str) -> bool:
     """
     Checks if the given name is that of a mod, the mod list is imported from the config.ini file.
     :param name:

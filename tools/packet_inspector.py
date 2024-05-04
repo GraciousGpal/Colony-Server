@@ -7,9 +7,9 @@ from colorama import init, Fore
 init(convert=True)
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
 log = logging.getLogger(__name__)
-
+#'\\Device\\NPF_Loopback',  # WireShark should be installed for this to work.
 port = 25565
-cap = pyshark.LiveCapture(interface='\\Device\\NPF_Loopback',  # WireShark should be installed for this to work.
+cap = pyshark.LiveCapture(interface='lo',
                           display_filter=f'tcp.port == {port} || udp.port == {port}')
 
 # Print packets with data in them and show receiver and sender.

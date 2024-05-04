@@ -7,7 +7,7 @@ from loguru import logger as log
 
 from lib.exceptions import UserNotFoundInRoom
 
-dc = discord.Client()
+dc = discord.Client(intents=discord.Intents.default())
 
 message_channel = Queue()
 
@@ -143,10 +143,42 @@ class Room:
             self.remove_room = True
             return True
         return False
+    
+    def is_user_in_room(self, user):
+        """
+        Checks if the user is in the room.
+         :param user:
+         :return:
+        """
+        return user.id in self.users
 
 
 # Global Counter
 counter = 1
+current_guests_ids = []
 
 # Default Rooms
 rms = {1: Room("MLX_6_Lobby", 1), 42: Room("MLX_6_Team_Channel", 42)}
+
+
+async def find_user(user=None, user_id=None, name=None):
+    """
+    Find a user in the room.
+    :param user:
+    :return:
+    """
+    if user is not None and isinstance(user, User):
+        for room in rms.values():
+            if user.id in room.users:
+                return room.users[user.id]
+    elif name is not None:
+        for room in rms.values():
+            for usr in room.users.values():
+                if usr.name == name:
+                    return usr
+    else:
+        for room in rms.values():
+            for usr in room.users.values():
+                if usr.id == user_id:
+                    return room.users[user_id]
+    return None
