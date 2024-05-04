@@ -552,9 +552,30 @@ async def as_obj_g(self, xml, user):
 
     elif rm_vars["id"] == "sendChat":
         await send_ally_chat(user, rm_vars, dict_format_obj, True)
+    
+    elif rm_vars["id"] == "sendTeamChat":
+        log.warning(f"sendTeamChat: {xml}")
+    elif rm_vars["id"] == "getKicked":
+        user_id_to_kick = rm_vars['_$$_']
+        if user_id_to_kick is not None and user_id_to_kick!= "":
+            await kick_user(xml, int(user_id_to_kick))
+        
     else:  # TODO Remove once project is feature complete
         raise NewVarCase(rm_vars['id'])
 
+async def kick_user(xml, user_id):
+    """
+    Kick a user from the room.
+    """
+    room_id = int(xml.body.attrib['r'])
+    msg = f"<msg t='sys'><body action='dataObj' r='{room_id}'><user id='{user_id}' /><dataObj><![CDATA[<dataObj><obj o='sub' t='a'></obj><var n='id' t='s'>getKicked</var></dataObj>]]></dataObj></body></msg>"
+    exit_msg = f"<msg t='sys'><body action='userGone' r='{room_id}'><user id='{user_id}' /></body></msg>"
+    found_user = await d.find_user(user_id=user_id)
+    if found_user is not None:
+        await found_user.send(msg)
+        for usr_id in d.rms[room_id].users:
+            await d.rms[room_id].users[usr_id].send(exit_msg)
+        
 
 async def order_unit(rm_vars, dict_format_obj):
     """
