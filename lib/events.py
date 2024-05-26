@@ -8,6 +8,7 @@ import lib.definitions as d
 from lib.admin import is_mod
 from lib.config import get_config
 from lib.definitions import Room
+
 # Load Configuration
 from lib.exceptions import NewVarCase
 
@@ -71,7 +72,6 @@ async def login(self, xml, user):
         self.database.add_user(user.name)
     d.message_channel.put(user.name, block=False)
 
-    
     # Buddy Join Event
     if "guest_" not in user.name:
         buddies = self.database.get_buddies(user.name)
@@ -80,6 +80,7 @@ async def login(self, xml, user):
             if usr_found is not None:
                 msg_bu = f"<msg t='sys'><body action='bUpd' r='-1'><b s='1' i='{user.id}'><n><![CDATA[{user.name}]]></n></b></body></msg>"
                 await usr_found.send(msg_bu)
+
 
 async def send_admin_message(user, msg):
     """
@@ -127,9 +128,11 @@ async def get_room_list(self, xml, user):
     rms = {k: d.rms[k] for k in d.rms if not d.rms[k].is_room_empy()}
     for r in rms:
         room = rms[r]
-        msg += f"<rm id='{room.id}' priv='{room.priv}' temp='{room.temp}'" \
-               f" game='{room.game}' ucnt='{room.ucnt}' maxu='{room.maxu}' " \
-               f"maxs='{room.maxs}'><n><![CDATA[{room.name}]]></n></rm>"
+        msg += (
+            f"<rm id='{room.id}' priv='{room.priv}' temp='{room.temp}'"
+            f" game='{room.game}' ucnt='{room.ucnt}' maxu='{room.maxu}' "
+            f"maxs='{room.maxs}'><n><![CDATA[{room.name}]]></n></rm>"
+        )
     msg += "</rmList></body></msg>"
     await user.send(msg)
 
@@ -156,9 +159,12 @@ async def join_room(self, xml, user, room_join_id=None):
     msg = f"<msg t='sys'><body action='joinOK' r='{r['id']}'><pid id='{user.id}'/>"
     if game_room(selected_room.id):
         msg += "<vars>"
-        properties = {"gameStart": (0, "b"), "gs": (d.rms[selected_room.id].gs, "n"),
-                      "randomFactor": (d.rms[selected_room.id].random_factor, "n"),
-                      "roomLeader": (d.rms[selected_room.id].room_leader, "n")}
+        properties = {
+            "gameStart": (0, "b"),
+            "gs": (d.rms[selected_room.id].gs, "n"),
+            "randomFactor": (d.rms[selected_room.id].random_factor, "n"),
+            "roomLeader": (d.rms[selected_room.id].room_leader, "n"),
+        }
         for p in properties:
             msg += f"<var n='{p}' t='{properties[p][1]}'><![CDATA[{properties[p][0]}]]></var>"
         msg += f"</vars><uLs r='{r['id']}'>"
@@ -186,8 +192,13 @@ async def join_room(self, xml, user, room_join_id=None):
 
                 for rm in d.rms:
                     for u in d.rms[rm].users:
-                        await d.rms[rm].users[u].send(
-                            f"<msg t='sys'><body action='roomDel'><rm id='{room_to_be_removed}'/></body></msg>")
+                        await (
+                            d.rms[rm]
+                            .users[u]
+                            .send(
+                                f"<msg t='sys'><body action='roomDel'><rm id='{room_to_be_removed}'/></body></msg>"
+                            )
+                        )
 
     for u in selected_room.users:
         us = selected_room.users[u]
@@ -218,17 +229,21 @@ async def join_room(self, xml, user, room_join_id=None):
 
     # Display welcome message when user enters main lobby.
     if int(d.rms[user.room].id) == 1:
-        #await user.send(
+        # await user.send(
         #    f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'><user id='{user.id}' /><txt>"
         #    f"<![CDATA[{config['welcome']['message']}]]></txt></body></msg>"
-        #)
+        # )
 
-        welcome_msg = f"<font size='20' color='#008000'>{config['welcome']['message']}</font>"
+        welcome_msg = (
+            f"<font size='20' color='#008000'>{config['welcome']['message']}</font>"
+        )
 
         welcome_msg = f"<msg t='sys'><body action='prvMsg' r='{d.rms[user.room].id}'><user id='-1' /><txt><![CDATA[ColonyBot!!&amp;&amp;!!<br>{welcome_msg}]]></txt></body></msg>"
         await user.send(welcome_msg)
-        
-    log.info(f"User ({user.id}, {user.name}) Joined {d.rms[user.room].name} ({d.rms[user.room].id})")
+
+    log.info(
+        f"User ({user.id}, {user.name}) Joined {d.rms[user.room].name} ({d.rms[user.room].id})"
+    )
 
 
 async def set_usr_variables(self, xml, user):
@@ -257,14 +272,18 @@ async def set_usr_variables(self, xml, user):
             async with self.lock:
                 setattr(user, var.attrib["n"], var.text)
         else:
-            raise NewVarCase(var.attrib['n'])
+            raise NewVarCase(var.attrib["n"])
 
     for usr_id in room:
         for room_ in d.rms:
             for user_id in d.rms[room_].users:
-                await d.rms[room_].users[user_id].send(
-                    f"<msg t='sys'><body action='uCount' "
-                    f"r='{d.rms[user.room].id}' u='{d.rms[user.room].ucnt}'></body></msg>"
+                await (
+                    d.rms[room_]
+                    .users[user_id]
+                    .send(
+                        f"<msg t='sys'><body action='uCount' "
+                        f"r='{d.rms[user.room].id}' u='{d.rms[user.room].ucnt}'></body></msg>"
+                    )
                 )
         if room[usr_id].id != room[usr_id].id:
             await room[usr_id].send(
@@ -335,12 +354,19 @@ async def show_rooms(user):
     """
     msg = ""
     for room in d.rms:
-        msg += f"{d.rms[room].name} ({d.rms[room].id}):" \
-               f" [{[(d.rms[room].users[usr].name, d.rms[room].users[usr].id) for usr in d.rms[room].users]}]\n"
+        msg += (
+            f"{d.rms[room].name} ({d.rms[room].id}):"
+            f" [{[(d.rms[room].users[usr].name, d.rms[room].users[usr].id) for usr in d.rms[room].users]}]\n"
+        )
     for usr_id in d.rms[user.room].users:
-        await d.rms[user.room].users[usr_id].send(
-            f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'>"
-            f"<user id='{user.id}' /><txt><![CDATA[{msg}]]></txt></body></msg>")
+        await (
+            d.rms[user.room]
+            .users[usr_id]
+            .send(
+                f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'>"
+                f"<user id='{user.id}' /><txt><![CDATA[{msg}]]></txt></body></msg>"
+            )
+        )
 
 
 async def process_custom_commands(cmd, user):
@@ -389,9 +415,11 @@ async def create_room(self, xml, user):
         d.counter += 1
 
     msg = f"<msg t='sys'><body action='roomAdd' r='{d.rms[user.room].id}'>"
-    msg += f"<rm id = '{d.counter}' priv = '0' temp = '{xml.body.room.attrib['tmp']}'" \
-           f" game = '{xml.body.room.attrib['gam']}' max = '4' spec = '{xml.body.room.attrib['spec']}'" \
-           f" limbo = '0' ><name><![CDATA[{xml.body.room.name.text}]]></name><vars /></rm></body></msg>"
+    msg += (
+        f"<rm id = '{d.counter}' priv = '0' temp = '{xml.body.room.attrib['tmp']}'"
+        f" game = '{xml.body.room.attrib['gam']}' max = '4' spec = '{xml.body.room.attrib['spec']}'"
+        f" limbo = '0' ><name><![CDATA[{xml.body.room.name.text}]]></name><vars /></rm></body></msg>"
+    )
 
     async with self.lock:
         d.rms[d.counter] = Room(xml.body.room.name.text, d.counter)
@@ -412,12 +440,10 @@ async def create_room(self, xml, user):
                 await d.rms[room_exited].users[usr_id].send(msg)
         except Exception as e:
             log.error(e)
-    
-    
 
 
 async def set_room_variables(self, xml, user):
-    """ TODO Finish Implementation
+    """TODO Finish Implementation
     Set Variables in a room.
     :param self:
     :param xml:
@@ -490,8 +516,10 @@ async def kill_unit(rm_vars, dict_format_obj):
     data = {}
     for var in dict_format_obj.obj.var:
         data[var.attrib["n"]] = (var.text, var.attrib["t"])
-    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}'/><dataObj>" \
-          f"<![CDATA[<dataObj><var n='id' t='s'>killUnit</var><obj o='sub' t='a'>"
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}'/><dataObj>"
+        f"<![CDATA[<dataObj><var n='id' t='s'>killUnit</var><obj o='sub' t='a'>"
+    )
     for item in data:
         msg += f"<var n='{item}' t='{data[item][1]}'>{data[item][0]}</var>"
     msg = f"{msg}</obj></dataObj>]]></dataObj></body></msg>"
@@ -508,16 +536,18 @@ async def send_ally_chat(user, rm_vars, dict_format_obj, ally=False):
     :param dict_format_obj:
     :return:
     """
-    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'>" \
-          f"<user id='{user.id if not ally else rm_vars['_$$_']}' />" \
-          f"<dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'>"
+        f"<user id='{user.id if not ally else rm_vars['_$$_']}' />"
+        f"<dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
+    )
     for var in dict_format_obj.obj.var:
         msg += f"<var n='{var.attrib['n']}' t='{var.attrib['t']}'>{var.text}</var>"
     msg = f"{msg}</obj><var n='id' t='s'>{rm_vars['id']}</var></dataObj>]]></dataObj></body></msg>"
 
     for usr in d.rms[int(rm_vars["rm_id"])].users:
         if ally:
-            if int(usr) == int(rm_vars['_$$_']):
+            if int(usr) == int(rm_vars["_$$_"]):
                 await d.rms[int(rm_vars["rm_id"])].users[usr].send(msg)
         else:
             if usr == user.id:
@@ -552,22 +582,23 @@ async def as_obj_g(self, xml, user):
 
     elif rm_vars["id"] == "sendChat":
         await send_ally_chat(user, rm_vars, dict_format_obj, True)
-    
+
     elif rm_vars["id"] == "sendTeamChat":
         log.warning(f"sendTeamChat: {xml}")
     elif rm_vars["id"] == "getKicked":
-        user_id_to_kick = rm_vars['_$$_']
-        if user_id_to_kick is not None and user_id_to_kick!= "":
+        user_id_to_kick = rm_vars["_$$_"]
+        if user_id_to_kick is not None and user_id_to_kick != "":
             await kick_user(xml, int(user_id_to_kick))
-        
+
     else:  # TODO Remove once project is feature complete
-        raise NewVarCase(rm_vars['id'])
+        raise NewVarCase(rm_vars["id"])
+
 
 async def kick_user(xml, user_id):
     """
     Kick a user from the room.
     """
-    room_id = int(xml.body.attrib['r'])
+    room_id = int(xml.body.attrib["r"])
     msg = f"<msg t='sys'><body action='dataObj' r='{room_id}'><user id='{user_id}' /><dataObj><![CDATA[<dataObj><obj o='sub' t='a'></obj><var n='id' t='s'>getKicked</var></dataObj>]]></dataObj></body></msg>"
     exit_msg = f"<msg t='sys'><body action='userGone' r='{room_id}'><user id='{user_id}' /></body></msg>"
     found_user = await d.find_user(user_id=user_id)
@@ -575,7 +606,7 @@ async def kick_user(xml, user_id):
         await found_user.send(msg)
         for usr_id in d.rms[room_id].users:
             await d.rms[room_id].users[usr_id].send(exit_msg)
-        
+
 
 async def order_unit(rm_vars, dict_format_obj):
     """
@@ -602,9 +633,11 @@ async def order_unit(rm_vars, dict_format_obj):
 
 async def update_team_display(self, xml, rm_vars, dict_obj):
     arrays = get_array_objects(dict_obj, xml.body.text)
-    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' />" \
-          f"<dataObj><![CDATA[<dataObj><var n='id' t='s'>updateTeamDisplay</var>" \
-          f"<obj t='o' o='sub'><obj t='a' o='array'>"
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' />"
+        f"<dataObj><![CDATA[<dataObj><var n='id' t='s'>updateTeamDisplay</var>"
+        f"<obj t='o' o='sub'><obj t='a' o='array'>"
+    )
     for idx, item in enumerate(arrays["array"]):
         msg += f"<var n='{idx}' t='s'>{item}</var>"
     msg += "</obj></obj></dataObj>]]></dataObj></body></msg>"
@@ -625,9 +658,11 @@ async def begin_game(xml, rm_vars, dict_obj):
     """
     arrays = get_array_objects(dict_obj, xml.body.text)
     rm_vars["randName"] = dict_obj.obj.var.text
-    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj>" \
-          f"<![CDATA[<dataObj><var n='id' t='s'>beginGame</var><obj t='o' o='sub'>" \
-          f"<var n='randName' t='s'>{rm_vars['randName']}</var>"
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj>"
+        f"<![CDATA[<dataObj><var n='id' t='s'>beginGame</var><obj t='o' o='sub'>"
+        f"<var n='randName' t='s'>{rm_vars['randName']}</var>"
+    )
     for obj_type in arrays:
         msg += f"<obj t='a' o='{obj_type}'>"
         for idx, item in enumerate(arrays[obj_type]):
@@ -644,7 +679,9 @@ async def begin_game(xml, rm_vars, dict_obj):
         )
         for user in d.rms[int(rm_vars["rm_id"])].users
     ]
-    log.info(f"A game has started in room {d.rms[int(rm_vars['rm_id'])].name}({rm_vars['rm_id']}) with {user_names}")
+    log.info(
+        f"A game has started in room {d.rms[int(rm_vars['rm_id'])].name}({rm_vars['rm_id']}) with {user_names}"
+    )
 
 
 async def xt_req(self, xml, user):
@@ -753,6 +790,7 @@ def get_room_vars(obj):
         rm_vars[var.attrib["n"]] = var.text
     return rm_vars
 
+
 async def add_to_buddy_list(self, xml, user):
     """
     Adds a user to the buddy list.
@@ -768,6 +806,7 @@ async def add_to_buddy_list(self, xml, user):
     else:
         log.error(f"User {user.name} not found in database!")
 
+
 async def send_private_message(self, xml, user):
     """
     Sends a private message to a user.
@@ -778,7 +817,7 @@ async def send_private_message(self, xml, user):
     """
     try:
         msg_obj = xml.body.txt.text
-        target_user_id = xml.body.txt.attrib['rcp']
+        target_user_id = xml.body.txt.attrib["rcp"]
         target_msg = msg_obj.split("!")[-1]
 
         target_user = await d.find_user(user_id=int(target_user_id))
@@ -790,6 +829,7 @@ async def send_private_message(self, xml, user):
         await target_user.send(msg)
     except Exception as e:
         log.error(f"Error: {e}")
+
 
 # Dictionary of Client Commands mapped to their handling functions
 event_handlers = {

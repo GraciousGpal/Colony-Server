@@ -12,6 +12,6 @@ def is_mod(name: str) -> bool:
     :param name:
     :return:
     """
-    mod_names = [x.lower() for x in config['admin']['moderators'].split(',')]
+    mod_names = [x.lower() for x in config["admin"]["moderators"].split(",")]
     b = name.lower() in mod_names
     return b

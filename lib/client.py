@@ -12,10 +12,13 @@ from lib.config import get_config
 from lib.definitions import User
 from lib.events import event_handlers
 from lib.database import UserDatabase
+
 # Load Configuration
 config = get_config()
 # Set Logging Level
-os.environ["LOGURU_LEVEL"] = "DEBUG" if config['logging']['level'] == "debug" else "INFO"
+os.environ["LOGURU_LEVEL"] = (
+    "DEBUG" if config["logging"]["level"] == "debug" else "INFO"
+)
 
 
 def get_latest_version() -> int:
@@ -23,9 +26,10 @@ def get_latest_version() -> int:
     Gets the latest version no from the website, if it fails fall back to default value.
     :return:
     """
+    return 165
     try:
         with urllib.request.urlopen(
-                "https://raw.githubusercontent.com/SynthKittenDev/Colony-Player/main/gameVersion"
+            "https://raw.githubusercontent.com/SynthKittenDev/Colony-Player/main/gameVersion"
         ) as f:
             return int(f.read().decode("utf-8"))
     except urllib.error.URLError as e:
@@ -65,7 +69,7 @@ async def listen_for_messages(user: User) -> None:
                 message = from_bytes(data).best()
                 log.warning(f"Decode failed on : {str(message)}")
                 # Write the failed data into file for analysis later on.
-                append_new_line('unparsed.log', data)
+                append_new_line("unparsed.log", data)
             except Exception:
                 return ""
 
@@ -95,7 +99,9 @@ def parse_xml(message: str):
         xml = objectify.fromstring(message)
         return xml
     except Exception as e:
-        log.error(f"Parse Error Occurred! ({e}) (message)", )
+        log.error(
+            f"Parse Error Occurred! ({e}) (message)",
+        )
 
 
 async def call_handlers(self, command, xml, user):
@@ -157,7 +163,6 @@ class Server:
         self.version = get_latest_version()
         self.database = UserDatabase(db_name=config["database"]["path"])
 
-
     async def get_new_id(self):
         """
         Get a new id for the user.
@@ -200,7 +205,7 @@ class Server:
                     messages.remove("")
                 except ValueError:
                     pass
-                
+
                 try:
                     await self._process_messages(messages, user)
                 except ConnectionResetError:
@@ -208,7 +213,7 @@ class Server:
         finally:
             # Ensure Disconnection
             await ensure_disconnect(self, user)
-    
+
     async def _process_messages(self, messages, user):
         """
         Send the connection string and processes the messages.
@@ -227,7 +232,7 @@ class Server:
             if xml is None:
                 continue
             command = get_commands(xml)
-            
+
             await call_handlers(self, command, xml, user)
 
 
@@ -255,4 +260,4 @@ def start():
 
 
 def launch_discord():
-    d.dc.run(os.getenv('DISCORD_API'))
+    d.dc.run(os.getenv("DISCORD_API"))

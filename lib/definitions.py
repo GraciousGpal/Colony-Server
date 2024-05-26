@@ -14,7 +14,7 @@ message_channel = Queue()
 
 @dc.event
 async def on_ready():
-    log.info(f'{dc.user} has connected to Discord!')
+    log.info(f"{dc.user} has connected to Discord!")
     channel = dc.get_channel(934229000392433675)
     while True:
         try:
@@ -143,7 +143,7 @@ class Room:
             self.remove_room = True
             return True
         return False
-    
+
     def is_user_in_room(self, user):
         """
         Checks if the user is in the room.

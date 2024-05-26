@@ -46,7 +46,9 @@ def analyse_shark_dump(data):
 if __name__ == "__main__":
     dump_path = "snaps"
 
-    dump_files = [f for f in listdir(dump_path) if "pcapng" in f and "buddy_leaves3.pcapng" in f]
+    dump_files = [
+        f for f in listdir(dump_path) if "pcapng" in f and "join_room_1.pcapng" in f
+    ]
     print(dump_files)
     for file in dump_files:
         print(f"------Analyzing: {file}------")
