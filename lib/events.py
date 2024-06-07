@@ -527,6 +527,25 @@ async def kill_unit(rm_vars, dict_format_obj):
         await d.rms[int(rm_vars["rm_id"])].users[usr].send(msg)
 
 
+async def send_stats(user, rm_vars, dict_format_obj):
+    """
+    Retrieves the stats of a specified player in a game room.
+    :param user:
+    :param rm_vars:
+    :param dict_format_obj:
+    :return:
+    """
+    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'>" \
+          f"<user id='{user.id}' />" \
+          f"<dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
+    for var in dict_format_obj.obj.var:
+        msg += f"<var n='{var.attrib['n']}' t='{var.attrib['t']}'>{var.text}</var>"
+    msg = f"{msg}</obj><var n='id' t='s'>{rm_vars['id']}</var></dataObj>]]></dataObj></body></msg>"
+
+    target_user_id = int(rm_vars['_$$_'])
+    await d.rms[int(rm_vars["rm_id"])].users[target_user_id].send(msg)
+
+
 async def send_ally_chat(user, rm_vars, dict_format_obj, ally=False):
     """
     Sends messages in a game room to allies or all users.
@@ -589,6 +608,12 @@ async def as_obj_g(self, xml, user):
         user_id_to_kick = rm_vars["_$$_"]
         if user_id_to_kick is not None and user_id_to_kick != "":
             await kick_user(xml, int(user_id_to_kick))
+
+    elif rm_vars["id"] == "requestStats":
+        await send_stats(user, rm_vars, dict_format_obj)
+
+    elif rm_vars["id"] == "sendStats":
+        await send_stats(user, rm_vars, dict_format_obj)
 
     else:  # TODO Remove once project is feature complete
         raise NewVarCase(rm_vars["id"])
