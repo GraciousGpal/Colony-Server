@@ -26,14 +26,18 @@ def get_latest_version() -> int:
     Gets the latest version no from the website, if it fails fall back to default value.
     :return:
     """
-    return 165
     try:
         with urllib.request.urlopen(
             "https://raw.githubusercontent.com/SynthKittenDev/Colony-Player/main/gameVersion"
         ) as f:
-            return int(f.read().decode("utf-8"))
+            raw_data = f.read()
+            result = raw_data.decode("utf-8").strip()
+            return int(result)
     except urllib.error.URLError as e:
-        print(e.reason)
+        log.error(e.reason)
+        return config["settings"]["version"]
+    except Exception as e:
+        log.error(e.reason)
         return config["settings"]["version"]
 
 
