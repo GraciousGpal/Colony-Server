@@ -574,6 +574,41 @@ async def send_ally_chat(user, rm_vars, dict_format_obj, ally=False):
             await d.rms[int(rm_vars["rm_id"])].users[usr].send(msg)
 
 
+async def update_player_colors(xml, rm_vars, dict_obj):
+    """
+    Updates player colors to all players in a game room.
+    :param xml:
+    :param rm_vars:
+    :param dict_obj:
+    :return:
+    """
+    from lxml import etree
+    import json
+    
+    colors = {}
+    if hasattr(dict_obj, 'obj'):
+        colors_obj = dict_obj.obj
+        for var_elem in colors_obj.findall("var"):
+            n = var_elem.get("n")
+            if n:
+                colors[n] = var_elem.text
+    
+    if not colors:
+        return
+    
+    room = d.rms[int(rm_vars["rm_id"])]
+    
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj>"
+        f"<![CDATA[<dataObj><var n='id' t='s'>updatePlayerColors</var><obj t='o' o='sub'><obj t='o' o='colors'>"
+        f"{''.join(f'<var n=\"{pos}\" t=\"n\">{color}</var>' for pos, color in colors.items())}"
+        f"</obj></obj></dataObj>]]></dataObj></body></msg>"
+    )
+
+    for user in room.users.values():
+        await user.send(msg)
+
+
 async def as_obj_g(self, xml, user):
     """
     Handler for action script objects in a game.
@@ -589,6 +624,9 @@ async def as_obj_g(self, xml, user):
 
     if rm_vars["id"] == "updateTeamDisplay":
         await update_team_display(self, xml, rm_vars, dict_format_obj)
+
+    elif rm_vars["id"] == "updatePlayerColors":
+        await update_player_colors(xml, rm_vars, dict_format_obj)
 
     elif rm_vars["id"] == "beginGame":
         await begin_game(xml, rm_vars, dict_format_obj)
@@ -683,11 +721,27 @@ async def begin_game(xml, rm_vars, dict_obj):
     """
     arrays = get_array_objects(dict_obj, xml.body.text)
     rm_vars["randName"] = dict_obj.obj.var.text
+    
+    player_colors = {}
+    for var in dict_obj.obj.var:
+        if var.attrib["n"] == "playerColors":
+            # Parse player colors from the XML
+            for color_var in var.var:
+                player_colors[color_var.attrib["n"]] = color_var.text
+            break
+    
     msg = (
         f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj>"
         f"<![CDATA[<dataObj><var n='id' t='s'>beginGame</var><obj t='o' o='sub'>"
         f"<var n='randName' t='s'>{rm_vars['randName']}</var>"
     )
+    
+    if player_colors:
+        msg += f"<obj t='o' o='playerColors'>"
+        for pos, color in player_colors.items():
+            msg += f"<var n='{pos}' t='n'>{color}</var>"
+        msg += "</obj>"
+    
     for obj_type in arrays:
         msg += f"<obj t='a' o='{obj_type}'>"
         for idx, item in enumerate(arrays[obj_type]):
