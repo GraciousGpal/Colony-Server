@@ -1,0 +1,12 @@
+{
+    "terminal.integrated.env.linux": {
+        "UV_PROJECT_ENVIRONMENT": "${env:HOME}/environment/${workspaceFolderBasename}"
+    },
+    "terminal.integrated.env.osx": {
+        "UV_PROJECT_ENVIRONMENT": "${env:HOME}/environment/${workspaceFolderBasename}"
+    },
+    "terminal.integrated.env.windows": {
+        "UV_PROJECT_ENVIRONMENT": "${env:USERPROFILE}/environment/${workspaceFolderBasename}"
+    },
+    "python.terminal.activateEnvironment": true
+}
