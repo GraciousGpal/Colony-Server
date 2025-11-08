@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  colony-server:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    container_name: colony-server
+    
+    # Port mapping - Game server port
+    ports:
+      - "25565:25565"
+    
+    # Volume mounts
+    volumes:
+      # Named volume for SQLite database persistence
+      - colony-data:/app/data
+      # Read-only bind mount for configuration file
+      - ./config.ini:/app/config.ini:ro
+    
+    # Environment variables
+    # Option 1: Load from .env file (recommended for sensitive data)
+    env_file:
+      - .env
+    
+    # Option 2: You can also define variables directly here
+    # environment:
+    #   - DISCORD_API=${DISCORD_API}
+    
+    # Restart policy - restart unless manually stopped
+    restart: unless-stopped
+    
+    # Network configuration
+    networks:
+      - colony-network
+    
+    # Health check (inherits from Dockerfile HEALTHCHECK)
+    # Can be customized here if needed
+    # healthcheck:
+    #   test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('localhost', 25565)); s.close()"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
+    
+    # Resource limits (optional but recommended for production)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Network definition
+networks:
+  colony-network:
+    driver: bridge
+
+# Volume declaration
+volumes:
+  colony-data:
+    driver: local

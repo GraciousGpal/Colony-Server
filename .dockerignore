@@ -1,0 +1,57 @@
+# Version Control
+.git/
+.gitignore
+.gitattributes
+
+# Python Cache Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation & Images
+README.md
+LICENSE
+Images/
+*.md
+
+# Development/Testing Files
+tools/
+snaps/
+*.log
+unparsed.log
+
+# Docker Files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Build Artifacts
+dist/
+build/
+*.egg-info/
+
+# Database Files (use volumes instead)
+data/*.db
+data/*.db-journal
