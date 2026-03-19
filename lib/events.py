@@ -125,7 +125,7 @@ async def get_room_list(self, xml, user):
     :return:
     """
     msg = "<msg t='sys'><body action='rmList' r='0'><rmList>"
-    rms = {k: d.rms[k] for k in d.rms if not d.rms[k].is_room_empy()}
+    rms = {k: d.rms[k] for k in d.rms if not d.rms[k].is_room_empty()}
     for r in rms:
         room = rms[r]
         msg += (

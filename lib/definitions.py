@@ -109,7 +109,7 @@ class Room:
         user = self.users.pop(user_id)
         if user is not None:
             self.ucnt -= 1
-            self.is_room_empy()
+            self.is_room_empty()
         else:
             raise UserNotFoundInRoom
 
@@ -130,11 +130,11 @@ class Room:
             user.room = dst
             rms[dst].users[user.id] = user
             rms[dst].ucnt += 1
-            self.is_room_empy()
+            self.is_room_empty()
         else:
             raise UserNotFoundInRoom
 
-    def is_room_empy(self):
+    def is_room_empty(self):
         """
         Checks if the Room is Empty and Returns True/False
         :return:
