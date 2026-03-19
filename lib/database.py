@@ -4,8 +4,17 @@ from loguru import logger as log
 class UserDatabase:
     def __init__(self, db_name):
         log.info(f"Connecting to {db_name}")
-        self.conn = sqlite3.connect(database=str(db_name))
+        self.conn = sqlite3.connect(
+            database=str(db_name),
+            check_same_thread=False,
+            timeout=10.0,
+        )
         self.create_table()
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+            log.info("Database connection closed")
 
     def create_table(self):
         cursor = self.conn.cursor()
