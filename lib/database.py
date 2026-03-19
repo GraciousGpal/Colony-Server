@@ -58,15 +58,16 @@ class UserDatabase:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            DELETE FROM users WHERE username = ?
+            DELETE FROM buddies WHERE user_id = (SELECT id FROM users WHERE username = ?)
+               OR buddy_id = (SELECT id FROM users WHERE username = ?)
         """,
-            (username,),
+            (username, username),
         )
         cursor.execute(
             """
-            DELETE FROM buddies WHERE username = ? OR buddy = ?
+            DELETE FROM users WHERE username = ?
         """,
-            (username, username),
+            (username,),
         )
         self.conn.commit()
         return cursor.rowcount > 0
