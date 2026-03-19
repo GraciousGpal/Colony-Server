@@ -184,19 +184,24 @@ class Server:
     async def get_new_id(self):
         """
         Get a new id for the user.
-        :return:
+        Uses database query to find gaps instead of loading all IDs.
+        :return: Unique integer ID
         """
-        counter = 0
-        counters = self.database.get_all_ids()
-        while True:
-            counter += 1
-            if counter not in counters:
-                break
+        db_id = self.database.get_next_available_id()
+
         async with self.lock:
-            while True:
+            counter = db_id
+            attempts = 0
+            max_attempts = 1000
+
+            while counter in d.current_guests_ids and attempts < max_attempts:
                 counter += 1
-                if counter not in d.current_guests_ids:
-                    break
+                attempts += 1
+
+            if attempts >= max_attempts:
+                log.error("Unable to find available guest ID after max attempts")
+                counter = db_id
+
         return counter
 
     async def handle(self, reader, writer):

@@ -38,6 +38,12 @@ class UserDatabase:
                 FOREIGN KEY (buddy_id) REFERENCES users(id)
             )
         """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_users_id ON users(id)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_buddies_user_id ON buddies(user_id)
+        """)
         self.conn.commit()
 
     def add_user(self, username, password=None):
@@ -150,6 +156,28 @@ class UserDatabase:
             SELECT id FROM users
         """)
         return [id[0] for id in cursor.fetchall()]
+
+
+    def get_next_available_id(self):
+        """
+        Get the next available user ID by finding gaps in the ID sequence.
+        :return: Next available integer ID
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT MIN(t1.id + 1) FROM users t1
+            WHERE NOT EXISTS (
+                SELECT t2.id FROM users t2 WHERE t2.id = t1.id + 1
+            )
+        """)
+        result = cursor.fetchone()[0]
+
+        if result is None:
+            max_id = cursor.execute(
+                "SELECT COALESCE(MAX(id), 0) FROM users"
+            ).fetchone()[0]
+            return max_id + 1
+        return result
 
     def buddy_check(self, user1, user2):
         cursor = self.conn.cursor()
