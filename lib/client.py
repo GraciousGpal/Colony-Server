@@ -65,7 +65,7 @@ async def listen_for_messages(user: User) -> None:
     try:
         data = await asyncio.wait_for(
             user.reader.readuntil(b"\x00"),
-            timeout=60.0,
+            timeout=1200.0,
         )
     except asyncio.TimeoutError:
         log.warning(f"Client {user.address} timed out on read")
