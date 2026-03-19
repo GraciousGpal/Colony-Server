@@ -63,10 +63,15 @@ class User:
         :param data:
         :return:
         """
-        data = self.clean(data)
-        self.writer.write(data)
-        log.debug(f"Sent: {data}")
-        await self.writer.drain()
+        try:
+            data = self.clean(data)
+            self.writer.write(data)
+            log.debug(f"Sent: {data}")
+            await self.writer.drain()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError) as e:
+            log.warning(f"Failed to send to {self.address}: {e}")
+        except Exception as e:
+            log.error(f"Unexpected send error to {self.address}: {e}")
 
 
 class Room:
