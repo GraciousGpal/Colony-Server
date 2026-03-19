@@ -1,3 +1,4 @@
+import asyncio
 import os
 import urllib.error
 import urllib.request
@@ -61,7 +62,20 @@ async def listen_for_messages(user: User) -> None:
     :param user:
     :return:
     """
-    data = await user.reader.readuntil(b"\x00")
+    try:
+        data = await asyncio.wait_for(
+            user.reader.readuntil(b"\x00"),
+            timeout=60.0,
+        )
+    except asyncio.TimeoutError:
+        log.warning(f"Client {user.address} timed out on read")
+        return None
+    except asyncio.IncompleteReadError:
+        log.info(f"{user.address} disconnected mid-message")
+        return None
+    except asyncio.LimitOverrunError:
+        log.warning(f"Message too large from {user.address}")
+        return None
     try:
         message = data.decode("ascii")
     except UnicodeDecodeError:
