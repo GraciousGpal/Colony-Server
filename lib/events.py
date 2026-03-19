@@ -530,9 +530,11 @@ async def send_stats(user, rm_vars, dict_format_obj):
     :param dict_format_obj:
     :return:
     """
-    msg = f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'>" \
-          f"<user id='{user.id}' />" \
-          f"<dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
+    msg = (
+        f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'>"
+        f"<user id='{user.id}' />"
+        f"<dataObj><![CDATA[<dataObj><obj t='o' o='sub'>"
+    )
     for var in dict_format_obj.obj.var:
         msg += f"<var n='{var.attrib['n']}' t='{var.attrib['t']}'>{var.text}</var>"
     msg = f"{msg}</obj><var n='id' t='s'>{rm_vars['id']}</var></dataObj>]]></dataObj></body></msg>"
@@ -587,9 +589,9 @@ async def update_player_colors(xml, rm_vars, dict_obj):
     
     if not colors:
         return
-    
+
     room = d.rms[int(rm_vars["rm_id"])]
-    
+
     msg = (
         f"<msg t='sys'><body action='dataObj' r='{rm_vars['rm_id']}'><user id='{rm_vars['_$$_']}' /><dataObj>"
         f"<![CDATA[<dataObj><var n='id' t='s'>updatePlayerColors</var><obj t='o' o='sub'><obj t='o' o='colors'>"
