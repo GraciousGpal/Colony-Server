@@ -285,7 +285,7 @@ async def set_usr_variables(self, xml, user):
                         f"r='{d.rms[user.room].id}' u='{d.rms[user.room].ucnt}'></body></msg>"
                     )
                 )
-        if room[usr_id].id != room[usr_id].id:
+        if room[usr_id].id != user.id:
             await room[usr_id].send(
                 f"<msg t='sys'><body action='uVarsUpdate' r='{room[usr_id].room}'><user id='{room[usr_id].id}' />"
                 f"<vars></vars></body></msg>"
