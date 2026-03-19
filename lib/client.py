@@ -37,7 +37,7 @@ def get_latest_version() -> int:
         log.error(e.reason)
         return config["settings"]["version"]
     except Exception as e:
-        log.error(e.reason)
+        log.error(str(e))
         return config["settings"]["version"]
 
 
