@@ -325,7 +325,7 @@ async def restart(user, sleep_time=10):
     :param sleep_time:
     :return:
     """
-    log.info(f"Restart Triggered by {user.name} id: (user.id) addr: ({user.address})")
+    log.info(f"Restart Triggered by {user.name} id: ({user.id}) addr: ({user.address})")
     await notify_all_users(f"Server is about to restart in {sleep_time}s.")
     await sleep(sleep_time)
     sys_exit(42)
