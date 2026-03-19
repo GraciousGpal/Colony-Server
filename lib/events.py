@@ -380,7 +380,7 @@ async def process_custom_commands(cmd, user):
         if cmd == "/restart":
             await restart(user)
         if cmd == "/update":
-            await restart(user)
+            await update(user)
     if cmd == "/showrooms":
         await show_rooms(user)
 
