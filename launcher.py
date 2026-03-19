@@ -1,6 +1,7 @@
+import subprocess
+
 from loguru import logger as log
 from multiprocessing import Process
-from os import popen
 from time import sleep
 
 from lib.client import start, launch_discord
@@ -49,14 +50,18 @@ if __name__ == "__main__":
                 start_process(n)
             elif exitcode == 43:
                 log.info("Process Update Called: Updating!")
-                stream = popen("git pull")
-                output = stream.read()
-                if output == "Already up to date.\n":
-                    log.info(output)
-                elif "file changed" in output:
+                result = subprocess.run(
+                    ["git", "pull"],
+                    capture_output=True,
+                    text=True,
+                )
+                output = result.stdout
+                if result.returncode != 0:
+                    log.error(f"Update Failed! {result.stderr}")
+                elif "Already up to date" in output:
+                    log.info(output.strip())
+                elif "file changed" in output or "files changed" in output:
                     log.info("Server Updated!")
-                else:
-                    log.error("Update Failed!")
                 start_process(n)
             else:
                 print(a, "Process Completed")
