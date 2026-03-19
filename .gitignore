@@ -5,3 +5,4 @@ snaps/*.pcapng
 data/*.db
 .serena
 uv.lock
+AUDIT.md
