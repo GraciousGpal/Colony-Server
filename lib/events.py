@@ -229,11 +229,6 @@ async def join_room(self, xml, user, room_join_id=None):
 
     # Display welcome message when user enters main lobby.
     if int(d.rms[user.room].id) == 1:
-        # await user.send(
-        #    f"<msg t='sys'><body action='pubMsg' r='{d.rms[user.room].id}'><user id='{user.id}' /><txt>"
-        #    f"<![CDATA[{config['welcome']['message']}]]></txt></body></msg>"
-        # )
-
         welcome_msg = (
             f"<font size='20' color='#008000'>{config['welcome']['message']}</font>"
         )
@@ -582,9 +577,6 @@ async def update_player_colors(xml, rm_vars, dict_obj):
     :param dict_obj:
     :return:
     """
-    from lxml import etree
-    import json
-    
     colors = {}
     if hasattr(dict_obj, 'obj'):
         colors_obj = dict_obj.obj
